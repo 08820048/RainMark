@@ -1,0 +1,50 @@
+{
+  "name": "raimark",
+  "version": "1.0.0",
+  "description": "智能书签管理Chrome扩展 - 自动分类、智能推荐、书签清理",
+  "main": "background.js",
+  "scripts": {
+    "build": "echo '构建完成'",
+    "test": "echo '运行测试'",
+    "lint": "echo '代码检查'",
+    "format": "echo '代码格式化'",
+    "dev": "echo '开发模式'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "bookmark-manager",
+    "smart-bookmarks",
+    "ai-classification",
+    "productivity"
+  ],
+  "author": {
+    "name": "RainMark Team",
+    "email": "support@raimark.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/08820048/RainMark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/08820048/RainMark/issues"
+  },
+  "homepage": "https://github.com/08820048/RainMark#readme",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "chromeExtension": {
+    "manifest_version": 3,
+    "permissions": [
+      "bookmarks",
+      "storage",
+      "tabs",
+      "history",
+      "notifications",
+      "alarms"
+    ]
+  }
+}
