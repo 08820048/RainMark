@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head></head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rain</title>Mark 功能测试</title>
+    <style></style>
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #4a6fa5;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-description {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .test-btn {
+            padding: 8px 16px;
+            background-color: #4a6fa5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .test-btn:hover {
+            background-color: #6b8cbc;
+        }
+
+        .test-btn.secondary {
+            background-color: #6c757d;
+        }
+
+        .test-btn.secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .test-btn.success {
+            background-color: #28a745;
+        }
+
+        .test-btn.success:hover {
+            background-color: #218838;
+        }
+
+        .test-btn.danger {
+            background-color: #dc3545;
+        }
+
+        .test-btn.danger:hover {
+            background-color: #c82333;
+        }
+
+        .test-result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .test-result.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .test-result.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .test-result.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background-color: #28a745;
+        }
+
+        .status-offline {
+            background-color: #dc3545;
+        }
+
+        .status-warning {
+            background-color: #ffc107;
+        }
+
+        .log-container {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-time {
+            color: #6c757d;
+            margin-right: 10px;
+        }
+
+        .log-message {
+            color: #333;
+        }
+
+        .log-error {
+            color: #dc3545;
+        }
+
+        .log-success {
+            color: #28a745;
+        }
+
+        .log-info {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+<body></body>
+    <div class="container">
+        <h1></h1>RainMark 智能书签管理插件 - 功能测试</h1>
+
+        <div class="test-section">
+            <div class="test-title">
+                <span class="status-indicator status-online"></span>
+                扩展状态检查
+            </div>
+            <div class="test-description">
+                检查 RainMark 扩展是否已正确安装并运行
+            </div>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testExtensionStatus()">检查扩展状态</button>
+                <button class="test-btn secondary" onclick="testPermissions()">检查权限</button>
+                <button class="test-btn secondary" onclick="testStorage()">检查存储</button>
+            </div>
+            <div id="statusResult" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">
+                <span class="status-indicator status-warning"></span>
+                书签功能测试
+            </div>
+            <div class="test-description">
+                测试书签的创建、分类、搜索等核心功能
+            </div>
+            <div class="test-buttons">
+                <button class="test-btn success" onclick="testCreateBookmark()">创建测试书签</button>
+                <button class="test-btn" onclick="testGetBookmarks()">获取所有书签</button>
+                <button class="test-btn" onclick="testSearchBookmarks()">搜索书签</button>
+                <button class="test-btn danger" onclick="testCleanDuplicates()">清理重复书签</button>
+            </div>
+            <div id="bookmarkResult" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">
+                <span class="status-indicator status-warning"></span>
+                智能分类测试
+            </div>
+            <div class="test-description">
+                测试智能分类算法的准确性
+            </div>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testClassification()">测试分类算法</button>
+                <button class="test-btn secondary" onclick="testAddCustomRule()">添加自定义规则</button>
+                <button class="test-btn secondary" onclick="testGetRules()">查看分类规则</button>
+            </div>
+            <div id="classificationResult" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">
+                <span class="status-indicator status-warning"></span>
+                推荐系统测试
+            </div>
+            <div class="test-description">
+                测试智能推荐功能
+            </div>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testGetRecommendations()">获取推荐</button>
+                <button class="test-btn secondary" onclick="testSimulateBrowsing()">模拟浏览</button>
+            </div>
+            <div id="recommendationResult" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">
+                <span class="status-indicator status-warning"></span>
+                设置功能测试
+            </div>
+            <div class="test-description">
+                测试设置保存和加载功能
+            </div>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="testSaveSettings()">保存测试设置</button>
+                <button class="test-btn" onclick="testLoadSettings()">加载设置</button>
+                <button class="test-btn danger" onclick="testResetSettings()">重置设置</button>
+            </div>
+            <div id="settingsResult" class="test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">
+                <span class="status-indicator status-warning"></span>
+                综合测试
+            </div>
+            <div class="test-description">
+                运行所有测试并生成报告
+            </div>
+            <div class="test-buttons">
+                <button class="test-btn success" onclick="runAllTests()">运行所有测试</button>
+                <button class="test-btn danger" onclick="clearTestData()">清理测试数据</button>
+            </div>
+            <div id="comprehensiveResult" class="test-result"></div>
+        </div>
+
+        <div class="log-container" id="testLog">
+            <div class="log-entry">
+                <span class="log-time">[系统]</span>
+                <span class="log-info">测试脚本已加载，点击按钮开始测试</span>
+            </div>
+        </div>
+    </div>
+
+    <script></script>
+        let testLog = [];
+
+        function log(message, type = 'info') {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            const logEntry = {
+                time: timeStr,
+                message: message,
+                type: type
+            };
+
+            testLog.push(logEntry);
+
+            const logContainer = document.getElementById('testLog');
+            const logElement = document.createElement('div');
+            logElement.className = 'log-entry';
+            logElement.innerHTML = `
+                <span class="log-time">[${timeStr}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+
+            logContainer.appendChild(logElement);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `test-result ${type}`;
+            log(`测试结果: ${message}`, type);
+        }
+
+        // 扩展状态检查
+        function testExtensionStatus() {
+            log('开始检查扩展状态...', 'info');
+
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                showResult('statusResult', '❌ Chrome扩展API不可用', 'error');
+                return;
+            }
+
+            if (!chrome.runtime.id) {
+                showResult('statusResult', '❌ RainMark扩展未安装或未启用', 'error');
+                return;
+            }
+
+            // 检查扩展是否响应
+            chrome.runtime.sendMessage({ action: 'ping' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    showResult('statusResult', '✅ 扩展已安装，但后台脚本未运行', 'warning');
+                } else {
+                    showResult('statusResult', '✅ 扩展状态正常，后台脚本运行中', 'success');
+                }
+            });
+        }
+
+        function testPermissions() {
+            log('检查扩展权限...', 'info');
+
+            chrome.permissions.contains({
+                permissions: ['bookmarks', 'storage', 'tabs', 'history', 'notifications']
+            }, (result) => {
+                if (result) {
+                    showResult('statusResult', '✅ 所有必要权限已授予', 'success');
+                } else {
+                    showResult('statusResult', '⚠️ 部分权限未授予，某些功能可能受限', 'warning');
+                }
+            });
+        }
+
+        function testStorage() {
+            log('检查存储功能...', 'info');
+
+            chrome.storage.sync.set({ testKey: 'testValue' }, () => {
+                if (chrome.runtime.lastError) {
+                    showResult('statusResult', '❌ 存储功能异常: ' + chrome.runtime.lastError.message, 'error');
+                } else {
+                    chrome.storage.sync.get(['testKey'], (result) => {
+                        if (result.testKey === 'testValue') {
+                            showResult('statusResult', '✅ 存储功能正常', 'success');
+                        } else {
+                            showResult('statusResult', '❌ 存储数据不一致', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        // 书签功能测试
+        function testCreateBookmark() {
+            log('创建测试书签...', 'info');
+
+            const testBookmarks = [
+                {
+                    title: 'GitHub - 代码托管平台',
+                    url: 'https://github.com'
+                },
+                {
+                    title: 'MDN Web Docs - 前端开发文档',
+                    url: 'https://developer.mozilla.org'
+                },
+                {
+                    title: 'Stack Overflow - 编程问答社区',
+                    url: 'https://stackoverflow.com'
+                },
+                {
+                    title: 'YouTube - 视频分享平台',
+                    url: 'https://youtube.com'
+                },
+                {
+                    title: 'Amazon - 电子商务网站',
+                    url: 'https://amazon.com'
+                }
+            ];
+
+            let createdCount = 0;
+            let errorCount = 0;
+
+            testBookmarks.forEach((bookmark, index) => {
+                chrome.bookmarks.create(bookmark, (result) => {
+                    if (chrome.runtime.lastError) {
+                        errorCount++;
+                        log(`创建书签失败: ${bookmark.title} - ${chrome.runtime.lastError.message}`, 'error');
+                    } else {
+                        createdCount++;
+                        log(`创建书签成功: ${bookmark.title}`, 'success');
+                    }
+
+                    if (createdCount + errorCount === testBookmarks.length) {
+                        showResult('bookmarkResult',
+                            `✅ 创建完成: ${createdCount}个成功, ${errorCount}个失败`,
+                            errorCount > 0 ? 'warning' : 'success');
+                    }
+                });
+            });
+        }
+
+        function testGetBookmarks() {
+            log('获取所有书签...', 'info');
+
+            chrome.bookmarks.getTree((tree) => {
+                if (chrome.runtime.lastError) {
+                    showResult('bookmarkResult', '❌ 获取书签失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                let totalCount = 0;
+                function countBookmarks(node) {
+                    if (node.url) totalCount++;
+                    if (node.children) {
+                        node.children.forEach(countBookmarks);
+                    }
+                }
+
+                countBookmarks(tree[0]);
+                showResult('bookmarkResult', `✅ 共找到 ${totalCount} 个书签`, 'success');
+                log(`书签总数: ${totalCount}`, 'info');
+            });
+        }
+
+        function testSearchBookmarks() {
+            log('搜索书签测试...', 'info');
+
+            chrome.bookmarks.search('github', (results) => {
+                if (chrome.runtime.lastError) {
+                    showResult('bookmarkResult', '❌ 搜索失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                showResult('bookmarkResult',
+                    `✅ 搜索 "github" 找到 ${results.length} 个结果`,
+                    'success');
+                log(`搜索到 ${results.length} 个相关书签`, 'info');
+            });
+        }
+
+        function testCleanDuplicates() {
+            log('清理重复书签测试...', 'info');
+
+            // 发送消息给扩展进行清理
+            chrome.runtime.sendMessage({ action: 'cleanDuplicates' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    showResult('bookmarkResult', '❌ 清理失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                if (response && response.success) {
+                    showResult('bookmarkResult',
+                        `✅ 清理完成，移除了 ${response.count || 0} 个重复书签`,
+                        'success');
+                } else {
+                    showResult('bookmarkResult', '❌ 清理失败', 'error');
+                }
+            });
+        }
+
+        // 智能分类测试
+        function testClassification() {
+            log('测试分类算法...', 'info');
+
+            const testCases = [
+                { title: 'GitHub Repository', url: 'https://github.com/user/repo', expected: '技术' },
+                { title: 'React Tutorial', url: 'https://reactjs.org/tutorial', expected: '学习' },
+                { title: 'Amazon Shopping', url: 'https://amazon.com/product', expected: '购物' },
+                { title: 'YouTube Music', url: 'https://youtube.com/music', expected: '娱乐' },
+                { title: 'CNN News', url: 'https://cnn.com/news', expected: '新闻' }
+            ];
+
+            // 发送消息给扩展进行分类测试
+            chrome.runtime.sendMessage({
+                action: 'testClassification',
+                testCases: testCases
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    showResult('classificationResult', '❌ 分类测试失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                if (response && response.results) {
+                    let correct = 0;
+                    let total = response.results.length;
+
+                    response.results.forEach((result, index) => {
+                        const testCase = testCases[index];
+                        if (result.category === testCase.expected) {
+                            correct++;
+                            log(`分类正确: "${testCase.title}" → ${result.category}`, 'success');
+                        } else {
+                            log(`分类错误: "${testCase.title}" → ${result.category} (期望: ${testCase.expected})`, 'error');
+                        }
+                    });
+
+                    const accuracy = Math.round((correct / total) * 100);
+                    showResult('classificationResult',
+                        `✅ 分类测试完成: ${correct}/${total} 正确 (${accuracy}%)`,
+                        accuracy > 80 ? 'success' : accuracy > 60 ? 'warning' : 'error');
+                }
+            });
+        }
+
+        function testAddCustomRule() {
+            log('添加自定义分类规则...', 'info');
+
+            chrome.runtime.sendMessage({
+                action: 'addClassificationRule',
+                pattern: '.*stackoverflow.*',
+                category: '技术问答'
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    showResult('classificationResult', '❌ 添加规则失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                if (response && response.success) {
+                    showResult('classificationResult', '✅ 自定义规则添加成功', 'success');
+                } else {
+                    showResult('classificationResult', '❌ 添加规则失败', 'error');
+                }
+            });
+        }
+
+        function testGetRules() {
+            log('获取分类规则...', 'info');
+
+            chrome.storage.sync.get(['userClassificationRules'], (result) => {
+                if (chrome.runtime.lastError) {
+                    showResult('classificationResult', '❌ 获取规则失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                const rules = result.userClassificationRules || [];
+                showResult('classificationResult',
+                    `✅ 找到 ${rules.length} 个自定义规则`,
+                    'success');
+                log(`自定义规则数量: ${rules.length}`, 'info');
+            });
+        }
+
+        // 推荐系统测试
+        function testGetRecommendations() {
+            log('获取推荐书签...', 'info');
+
+            chrome.runtime.sendMessage({ action: 'getRecommendations' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    showResult('recommendationResult', '❌ 获取推荐失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                if (response && Array.isArray(response)) {
+                    showResult('recommendationResult',
+                        `✅ 获取到 ${response.length} 个推荐书签`,
+                        'success');
+                    log(`推荐书签数量: ${response.length}`, 'info');
+                } else {
+                    showResult('recommendationResult', '❌ 推荐数据格式错误', 'error');
+                }
+            });
+        }
+
+        function testSimulateBrowsing() {
+            log('模拟浏览行为...', 'info');
+
+            // 模拟访问技术相关页面
+            chrome.runtime.sendMessage({
+                action: 'simulateBrowsing',
+                url: 'https://github.com',
+                title: 'GitHub - Where software is built'
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    showResult('recommendationResult', '❌ 模拟失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                if (response && response.success) {
+                    showResult('recommendationResult', '✅ 浏览行为模拟成功，推荐系统已更新', 'success');
+                } else {
+                    showResult('recommendationResult', '❌ 模拟失败', 'error');
+                }
+            });
+        }
+
+        // 设置功能测试
+        function testSaveSettings() {
+            log('保存测试设置...', 'info');
+
+            const testSettings = {
+                autoClassify: true,
+                enableNotifications: true,
+                enableRecommendations: true,
+                checkInvalidBookmarks: true,
+                checkFrequency: '60',
+                autoCleanDuplicates: false,
+                defaultCategory: '其他',
+                testTimestamp: Date.now()
+            };
+
+            chrome.storage.sync.set(testSettings, () => {
+                if (chrome.runtime.lastError) {
+                    showResult('settingsResult', '❌ 保存设置失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                showResult('settingsResult', '✅ 测试设置保存成功', 'success');
+            });
+        }
+
+        function testLoadSettings() {
+            log('加载设置...', 'info');
+
+            chrome.storage.sync.get([
+                'autoClassify',
+                'enableNotifications',
+                'enableRecommendations',
+                'checkInvalidBookmarks',
+                'checkFrequency',
+                'autoCleanDuplicates',
+                'defaultCategory'
+            ], (result) => {
+                if (chrome.runtime.lastError) {
+                    showResult('settingsResult', '❌ 加载设置失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                const settingsCount = Object.keys(result).length;
+                showResult('settingsResult',
+                    `✅ 加载到 ${settingsCount} 个设置项`,
+                    'success');
+                log(`设置项数量: ${settingsCount}`, 'info');
+            });
+        }
+
+        function testResetSettings() {
+            log('重置设置...', 'info');
+
+            if (!confirm('确定要重置所有设置吗？此操作不可撤销。')) {
+                return;
+            }
+
+            chrome.storage.sync.clear(() => {
+                if (chrome.runtime.lastError) {
+                    showResult('settingsResult', '❌ 重置设置失败: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                showResult('settingsResult', '✅ 所有设置已重置', 'success');
+            });
+        }
+
+        // 综合测试
+        function runAllTests() {
+            log('开始运行所有测试...', 'info');
+            showResult('comprehensiveResult', '🔄 测试进行中，请查看日志...', 'info');
+
+            // 按顺序运行所有测试
+            const tests = [
+                testExtensionStatus,
+                testPermissions,
+                testStorage,
+                testGetBookmarks,
+                testClassification,
+                testGetRecommendations,
+                testLoadSettings
+            ];
+
+            let currentTest = 0;
+
+            function runNextTest() {
+                if (currentTest < tests.length) {
+                    log(`运行测试 ${currentTest + 1}/${tests.length}...`, 'info');
+                    tests[currentTest]();
+                    currentTest++;
+                    setTimeout(runNextTest, 1000); // 每个测试间隔1秒
+                } else {
+                    showResult('comprehensiveResult', '✅ 所有测试完成，请查看上方结果', 'success');
+                    log('所有测试完成', 'success');
+                }
+            }
+
+            runNextTest();
+        }
+
+        function clearTestData() {
+            log('清理测试数据...', 'info');
+
+            if (!confirm('确定要清理所有测试数据吗？此操作将删除测试期间创建的书签和设置。')) {
+                return;
+            }
+
+            // 清理测试书签
+            chrome.bookmarks.search('test', (results) => {
+                results.forEach((bookmark) => {
+                    chrome.bookmarks.remove(bookmark.id);
+                });
+            });
+
+            // 清理测试设置
+            chrome.storage.sync.remove(['testKey', 'testTimestamp']);
+
+            showResult('comprehensiveResult', '✅ 测试数据清理完成', 'success');
+            log('测试数据已清理', 'success');
+        }
+
+        // 初始化
+        log('RainMark 测试脚本初始化完成', 'success');
+        log('请确保 RainMark 扩展已安装并启用', 'info');
+        log('点击上方按钮开始测试各项功能', 'info');
+    </script>
+</body>
+</html>

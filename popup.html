@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RainMark - 智能书签管理</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; width: 400px; padding: 10px; }
+        h1 { color: #4a6fa5; margin-bottom: 10px; }
+        input { width: 100%; margin-bottom: 10px; padding: 8px; }
+        ul { list-style: none; padding: 0; }
+        li { padding: 5px; border-bottom: 1px solid #ddd; cursor: pointer; }
+        li:hover { background: #f0f0f0; }
+        button { margin-top: 10px; padding: 8px 16px; }
+        .tab { display: none; }
+        .tab.active { display: block; }
+        .tabs { display: flex; margin-bottom: 10px; }
+        .tab-btn { flex: 1; padding: 8px; text-align: center; cursor: pointer; border: 1px solid #ddd; }
+        .tab-btn.active { background: #4a6fa5; color: white; }
+    </style>
+</head>
+<body>
+    <h1>RainMark</h1>
+    <input type="text" id="searchInput" placeholder="搜索书签...">
+    
+    <div class="tabs">
+        <div class="tab-btn active" data-tab="recommendations">推荐</div>
+        <div class="tab-btn" data-tab="bookmarks">书签</div>
+        <div class="tab-btn" data-tab="stats">统计</div>
+    </div>
+    
+    <div class="tab active" id="recommendations-tab">
+        <h3>智能推荐</h3>
+        <div id="recommendationsGrid">加载中...</div>
+        <h3>最近书签</h3>
+        <ul id="recentBookmarks"></ul>
+    </div>
+    
+    <div class="tab" id="bookmarks-tab">
+        <h3>所有书签</h3>
+        <ul id="allBookmarks"></ul>
+        <button id="cleanDuplicatesBtn">清理重复</button>
+        <button id="exportBtn">导出书签</button>
+    </div>
+    
+    <div class="tab" id="stats-tab">
+        <h3>统计信息</h3>
+        <div>总书签: <span id="totalBookmarks">0</span></div>
+        <div>分类数: <span id="categoriesCount">0</span></div>
+        <div>重复数: <span id="duplicatesCount">0</span></div>
+        <button id="checkInvalidBtn">检查失效链接</button>
+        <button id="settingsBtn">设置</button>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
