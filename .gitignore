@@ -1,0 +1,97 @@
+# RainMark 智能书签管理插件 - .gitignore
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器文件
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 依赖目录
+node_modules/
+jspm_packages/
+
+# 可选 npm 缓存目录
+.npm
+
+# 可选 eslint 缓存
+.eslintcache
+
+# 可选 REPL 历史
+.node_repl_history
+
+# 输出目录
+dist/
+build/
+out-tsc/
+
+# 临时文件
+*.tmp
+*.temp
+
+# 系统文件
+*.sys
+
+# 备份文件
+*.bak
+*.backup
+*.old
+
+# 配置文件备份
+*.orig
+
+# 包文件
+*.tgz
+*.tar.gz
+*.zip
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 覆盖率目录
+coverage/
+.nyc_output/
+
+# Chrome 扩展开发
+.crx
+.pem
+
+# 项目特定文件
+manifest.json.backup
+test-basic.js
+test.html
+
+# 文档生成
+docs/_build/
+
+# IDE 特定文件
+.idea/
+*.iml
+
+# 操作系统临时目录
+tmp/
+temp/
