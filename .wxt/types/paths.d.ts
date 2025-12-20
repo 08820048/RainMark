@@ -5,6 +5,7 @@ declare module "wxt/browser" {
   export type PublicPath =
     | "/"
     | "/background.js"
+    | "/manage.html"
     | "/options.html"
     | "/popup.html"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>

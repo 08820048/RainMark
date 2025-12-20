@@ -346,16 +346,26 @@ function PopupApp() {
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedAny = false;
       const handleEvent = (event: string, data: any) => {
         if (event === "mode") {
           setLoadingText(data?.mode === "AI" ? t("loading_ai_generating") : t("loading_generating"));
         } else if (event === "reset") {
           setRecs([]);
         } else if (event === "item") {
+          receivedAny = true;
           setRecs((prev) => [...prev, data]);
         } else if (event === "done") {
           setLoading(false);
           setLoadingText("");
+          if (!receivedAny) {
+            // 无任何返回项时，兜底给出前5条书签（Local）
+            setRecs(
+              allCandidates
+                .slice(0, 5)
+                .map((b) => ({ id: b.id, title: b.title, url: b.url, score: 0, source: "Local" as const })),
+            );
+          }
         } else if (event === "error") {
           const msg = typeof data?.error === "string" ? data.error : t("alert_ai_failed");
           toast.error(msg);

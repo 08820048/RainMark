@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>RainMark</title>
     <style>
-      body { width: 400px; min-height: 500px; margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); }
-      #root { min-height: 500px; }
+      body { width: 400px; min-height: 500px; margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); box-sizing: border-box; }
+      #root { min-height: 500px; margin: 0; box-sizing: border-box; background: transparent; }
       .list { list-style: none; padding: 0; }
       .list li { padding: 8px; border-bottom: 1px solid var(--rm-border); cursor: pointer; will-change: transform, opacity; }
-      .list li:hover { background: var(--rm-pill-bg); }
+      .list li:hover { background: var(--rm-primary); color: #fff; }
+      .list li:hover small { color: #fff; }
       @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
@@ -18,9 +19,11 @@
       .btn:active { transform: translateY(1px); }
       .modal-card .search { width: 100%; box-sizing: border-box; }
     </style>
-    <script type="module" crossorigin src="/chunks/popup-3EqoK-EU.js"></script>
-    <link rel="modulepreload" crossorigin href="/chunks/theme-11K_mN9q.js">
-    <link rel="stylesheet" crossorigin href="/assets/theme-7qwK7F4D.css">
+    <script type="module" crossorigin src="/chunks/popup-DLhC5i58.js"></script>
+    <link rel="modulepreload" crossorigin href="/chunks/createLucideIcon-BcSc9QM8.js">
+    <link rel="modulepreload" crossorigin href="/chunks/toast-CRo1ibSs.js">
+    <link rel="modulepreload" crossorigin href="/chunks/link-DkYv52e9.js">
+    <link rel="stylesheet" crossorigin href="/assets/createLucideIcon-CLd-GcYC.css">
   </head>
   <body>
     <div id="root"></div>
