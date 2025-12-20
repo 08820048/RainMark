@@ -696,46 +696,16 @@ function PopupApp() {
    */
   async function shareToX(title: string, url: string) {
     const lang: "zh" | "en" = detectLang();
-    let text = `${t("share_fallback_prefix")}${(title || "").slice(0, 120)}`;
-    let tags: string[] = [];
-    try {
-      const settings = await new Promise<any>((resolve) => {
-        chrome.runtime.sendMessage({ action: "getSettings" }, (r: any) => resolve(r));
-      });
-      const server = settings?.serverUrl || "http://localhost:5175";
-      const resp = await fetch(`${server}/share/summarize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: url || "",
-          title: title || "",
-          provider: settings?.aiProvider,
-          apiKey: settings?.aiApiKey,
-          apiUrl: settings?.aiApiUrl,
-          model: settings?.aiModel,
-          lang,
-        }),
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data?.text) {
-          text = `🔖 ${String(data.text).trim()}`;
-        }
-        if (Array.isArray(data?.tags)) {
-          tags = data.tags.slice(0, 4);
-        }
-      }
-    } catch (e) {
-      // ignore and fallback to default text
-    }
-    if (!tags.length) {
-      tags = lang === "en" ? ["#RainMarkExtension", "#Bookmarks"] : ["#RainMark插件", "#书签"];
-    }
-    const suffix = `${t("share_suffix_source")} ${tags.join(" ")}`.trim();
-    const u = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${text}\n${suffix}`)}&url=${encodeURIComponent(
+    const baseText = `${t("share_fallback_prefix")}${(title || "").slice(0, 120)}`;
+    const baseTags = lang === "en" ? ["#RainMarkExtension", "#Bookmarks"] : ["#RainMark插件", "#书签"];
+    const baseSuffix = `${t("share_suffix_source")} ${baseTags.join(" ")}`.trim();
+    const baseUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${baseText}\n${baseSuffix}`)}&url=${encodeURIComponent(
       url || "",
     )}`;
-    window.open(u, "_blank");
+    try {
+      chrome.runtime.sendMessage?.({ action: "shareSummarize", payload: { title, url, lang } });
+    } catch {}
+    window.open(baseUrl, "_blank");
     setOpenMenu(null);
   }
   /**

@@ -62,7 +62,8 @@
       "tabs",
       "history",
       "notifications",
-      "alarms"
+      "alarms",
+      "clipboardWrite"
     ]
   }
 }

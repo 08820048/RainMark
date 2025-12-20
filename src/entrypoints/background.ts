@@ -162,6 +162,34 @@ async function checkInvalidBookmarksNow(): Promise<{ success: boolean; count?: n
 }
 
 export default defineBackground(() => {
+  const shareTexts = new Map<string, string>();
+  const iconUrl = (chrome as any)?.runtime?.getURL?.("icons/icon128.png") || "icons/icon128.png";
+  browser.notifications?.onButtonClicked?.addListener(async (nid: string, idx: number) => {
+    if (idx !== 0) return;
+    const text = shareTexts.get(nid);
+    if (!text) return;
+    try {
+      await (navigator.clipboard as any)?.writeText?.(text);
+      try {
+        await browser.notifications.clear(nid);
+      } catch {}
+      await browser.notifications.create(`rm-share-ok-${Math.random().toString(36).slice(2)}`, {
+        type: "basic",
+        title: "已复制更佳文案",
+        message: "请在 X 发帖框粘贴替换",
+        iconUrl,
+        priority: 2,
+      } as any);
+    } catch {
+      await browser.notifications.create(`rm-share-copy-failed-${Math.random().toString(36).slice(2)}`, {
+        type: "basic",
+        title: "复制失败",
+        message: "请手动复制通知中的文案",
+        iconUrl,
+        priority: 2,
+      } as any);
+    }
+  });
   // 书签创建事件：自动分类与通知
   browser.bookmarks.onCreated?.addListener(async (id: string, bookmark: any) => {
     try {
@@ -224,6 +252,86 @@ export default defineBackground(() => {
         return (async () => {
           await setSettings(req.payload || {});
           return { success: true };
+        })();
+      case "shareSummarize":
+        return (async () => {
+          try {
+            const payload = req.payload || {};
+            const title = String(payload.title || "");
+            const url = String(payload.url || "");
+            const lang = (payload.lang as "zh" | "en") || "zh";
+            const s = await getSettings();
+            const base = s.serverUrl || "http://localhost:5175";
+            const nid = `rm-share-${Math.random().toString(36).slice(2)}`;
+            await browser.notifications.create(nid, {
+              type: "basic",
+              title: "正在生成更佳文案…",
+              message: "打开 X 后稍等片刻，生成完成可复制",
+              iconUrl,
+              priority: 2,
+            } as any);
+            try {
+              const resp = await fetch(`${base}/share/summarize`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  url,
+                  title,
+                  provider: s.aiProvider,
+                  apiKey: s.aiApiKey,
+                  apiUrl: s.aiApiUrl,
+                  model: s.aiModel,
+                  lang,
+                }),
+              });
+              if (resp.ok) {
+                const data = await resp.json();
+                let text = `${title.slice(0, 120)}`;
+                let tags: string[] = lang === "en" ? ["#RainMarkExtension", "#Bookmarks"] : ["#RainMark插件", "#书签"];
+                if (data?.text) text = `🔖 ${String(data.text).trim()}`;
+                if (Array.isArray(data?.tags) && data.tags.length) tags = data.tags.slice(0, 4);
+                const suffix = `${(browser as any)?.i18n?.getMessage?.("share_suffix_source") || "来源"} ${tags.join(" ")}`.trim();
+                const composed = `${text}\n${suffix}\n${url}`.trim();
+                shareTexts.set(nid, composed);
+                try {
+                  await browser.notifications.clear(nid);
+                } catch {}
+                await browser.notifications.create(nid, {
+                  type: "basic",
+                  title: "文案已生成",
+                  message: "点击“复制”按钮复制到剪贴板",
+                  iconUrl,
+                  buttons: [{ title: "复制" }],
+                  priority: 2,
+                } as any);
+              } else {
+                try {
+                  await browser.notifications.clear(nid);
+                } catch {}
+                await browser.notifications.create(`rm-share-failed-${Math.random().toString(36).slice(2)}`, {
+                  type: "basic",
+                  title: "生成失败",
+                  message: "已使用默认文案打开 X",
+                  iconUrl,
+                  priority: 2,
+                } as any);
+              }
+            } catch {
+              try {
+                await browser.notifications.clear(nid);
+              } catch {}
+              await browser.notifications.create(`rm-share-error-${Math.random().toString(36).slice(2)}`, {
+                type: "basic",
+                title: "生成失败",
+                message: "已使用默认文案打开 X",
+                iconUrl,
+                priority: 2,
+              } as any);
+            }
+            return { success: true };
+          } catch (e) {
+            return { success: false, error: String(e) };
+          }
         })();
       case "ping":
         return { status: "ok", version: "1.0.0" };
