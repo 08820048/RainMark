@@ -74,6 +74,7 @@ function PopupApp() {
   ];
   const [accentIdx, setAccentIdx] = useState(0);
   const sseAbortRef = useRef<AbortController | null>(null);
+  const [serverConnected, setServerConnected] = useState<boolean | null>(null);
 
   function applyThemeBorder() {
     try {
@@ -323,6 +324,7 @@ function PopupApp() {
             const recs = (data?.recommendations ?? []) as Array<{ id: string; title: string; url: string; score: number }>;
             if (Array.isArray(recs)) {
               setRecs(recs);
+              setServerConnected(true);
               setLoading(false);
               setLoadingText("");
               return;
@@ -337,12 +339,14 @@ function PopupApp() {
               });
             });
             setRecs(fallback ?? []);
+            setServerConnected(false);
           } catch {}
           setLoading(false);
           setLoadingText("");
           return;
         }
       }
+      setServerConnected(true);
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -371,6 +375,7 @@ function PopupApp() {
           toast.error(msg);
           setLoading(false);
           setLoadingText("");
+          setServerConnected(false);
         }
       };
       while (true) {
@@ -467,6 +472,7 @@ function PopupApp() {
         setLoading(false);
         setLoadingText("");
         console.error("recommend stream failed:", e);
+        setServerConnected(false);
       }
     }
   }
@@ -1079,6 +1085,12 @@ function PopupApp() {
                 >
                   <Sparkles size={16} />
                 </button>
+                <span style={{ fontSize: 12, color: serverConnected ? "#10b981" : "#ef4444", marginLeft: 8 }}>
+                  {serverConnected === null ? "连接: 未知" : serverConnected ? "连接: 已连接" : "连接: 未连接"}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--rm-muted)", marginLeft: 8 }}>
+                  模式: {recMode === "ai" ? "AI" : "本地"}
+                </span>
               </div>
             </div>
             {loading && <div className="loading-text">{loadingText}</div>}
@@ -1145,7 +1157,11 @@ function PopupApp() {
                   )}
                 </li>
               )}
-              {recs.length === 0 && <li>{t("no_recommendations")}</li>}
+              {recs.length === 0 && !loading && (
+                <li>
+                  {bookmarks.length === 0 ? (t("no_bookmarks") + "，点击五角星可添加当前页") : t("no_recommendations")}
+                </li>
+              )}
               {recs.map((b, i) => (
                 <li
                   className="hover-primary"
