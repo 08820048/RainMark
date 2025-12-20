@@ -362,6 +362,227 @@ fastify.options("/recommend/stream", async (request, reply) => {
 });
 
 /**
+ * 解析页面 HTML 元信息（title、description、OG/Twitter 标签）
+ */
+function extractPageMeta(html = "") {
+  const txt = String(html || "");
+  function pick(re) {
+    const m = txt.match(re);
+    return m ? String(m[1] || "").trim() : "";
+  }
+  const title = pick(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const desc =
+    pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i) ||
+    pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>/i) ||
+    pick(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([^"']+)["'][^>]*>/i);
+  const ogTitle =
+    pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["'][^>]*>/i) ||
+    pick(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["'][^>]*>/i);
+  const siteName = pick(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["'][^>]*>/i);
+  return { title, description: desc, ogTitle, siteName };
+}
+
+/**
+ * 生成分享文案（AI，可选）
+ */
+async function generateShareCopyWithAI(meta, opts = {}) {
+  const provider = (opts.provider || process.env.AI_PROVIDER || "").toLowerCase();
+  const apiKey =
+    opts.apiKey || (provider === "deepseek" ? process.env.DEEPSEEK_API_KEY : process.env.OPENAI_API_KEY);
+  const model =
+    opts.model ||
+    (provider === "deepseek" ? process.env.DEEPSEEK_MODEL || "deepseek-chat" : process.env.OPENAI_MODEL || "gpt-4o-mini");
+  if (!apiKey) return null;
+  const base =
+    opts.apiUrl ||
+    (provider === "deepseek" ? process.env.DEEPSEEK_API_URL || "https://api.deepseek.com" : "https://api.openai.com");
+  const lang = String(opts.lang || "zh").toLowerCase() === "en" ? "en" : "zh";
+  const info = {
+    url: meta.url || "",
+    domain: (() => {
+      try {
+        return new URL(meta.url || "").hostname || "";
+      } catch {
+        return "";
+      }
+    })(),
+    title: meta.title || meta.ogTitle || "",
+    description: meta.description || "",
+    siteName: meta.siteName || "",
+  };
+  const prompt =
+    lang === "en"
+      ? `Generate a short, objective one-sentence English share copy (max 80 characters) for this webpage.
+Requirements: briefly describe the site's/page's core function; do not include the URL; avoid marketing buzzwords.
+Info:
+- Title: ${info.title}
+- Description: ${info.description}
+- SiteName: ${info.siteName}
+- Domain: ${info.domain}`
+      : `请为以下网页生成一个简短、客观的中文分享文案（不超过60字），
+要求：简要说明该网站/页面的基本功能或核心用途；不要包含URL；避免营销词和夸张语；只返回文案本身。
+信息：
+- 标题：${info.title}
+- 简介：${info.description}
+- 站点名：${info.siteName}
+- 域名：${info.domain}`;
+  const messages =
+    lang === "en"
+      ? [
+          { role: "system", content: "You are a concise copywriter who outputs a single objective English sentence." },
+          { role: "user", content: prompt },
+        ]
+      : [
+          { role: "system", content: "你是一个分享文案生成器，输出精炼、客观的中文一句话。" },
+          { role: "user", content: prompt },
+        ];
+  try {
+    if (provider === "deepseek") {
+      const res = await fetch(`${base}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, messages, temperature: 0 }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content?.trim() || "";
+      return text.slice(0, 120);
+    } else if (provider === "openai") {
+      const res = await fetch(`https://api.openai.com/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, messages, temperature: 0 }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content?.trim() || "";
+      return text.slice(0, 120);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 基于页面元信息生成分享文案（无 AI 的回退）
+ */
+function composeShareCopyFromMeta(meta = {}, lang = "zh") {
+  const site = String(meta.siteName || "").trim();
+  const title = String(meta.title || meta.ogTitle || "").trim();
+  const desc = String(meta.description || "").trim();
+  const domain = (() => {
+    try {
+      return new URL(meta.url || "").hostname || "";
+    } catch {
+      return "";
+    }
+  })();
+  const name = site || title || domain;
+  const base = desc || title || domain;
+  if (String(lang || "zh").toLowerCase() === "en") {
+    const ascii = (s) =>
+      String(s || "")
+        .replace(/[^\x00-\x7F]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const nameEn = ascii(name);
+    const baseEn = ascii(base);
+    const content = baseEn && baseEn.length > 6 ? baseEn : "A helpful website";
+    const titlePart = nameEn || (domain ? domain.split(".")[0] : "");
+    const text = `${titlePart ? `${titlePart}: ` : ""}${content}`.slice(0, 100);
+    return text;
+  } else {
+    const text = `${name ? `${name}：` : ""}${base}`.replace(/\s+/g, " ").slice(0, 80);
+    return text;
+  }
+}
+
+/**
+ * 从元信息推断标签，包含站点/类别/固定标签（按语言）
+ */
+function composeTagsFromMeta(meta = {}, lang = "en") {
+  const isEn = String(lang || "en").toLowerCase() === "en";
+  const fixed = isEn ? ["#RainMarkExtension", "#Bookmarks"] : ["#RainMark插件", "#书签"];
+  const domain = (() => {
+    try {
+      return new URL(meta.url || "").hostname || "";
+    } catch {
+      return "";
+    }
+  })();
+  const site = String(meta.siteName || "").trim();
+  const title = String(meta.title || meta.ogTitle || "").trim();
+  function toTag(raw) {
+    const s = String(raw || "")
+      .replace(/[\u2700-\u27BF]/g, "")
+      .replace(/[^A-Za-z0-9\u4e00-\u9fa5]+/g, " ")
+      .trim()
+      .split(/\s+/)[0];
+    if (!s) return null;
+    return `#${s}`;
+  }
+  const siteTag = toTag(site) || toTag(title) || (domain ? `#${domain.split(".")[0]}` : null);
+  const catTag = (() => {
+    const text = `${title} ${domain}`.toLowerCase();
+    if (isEn) {
+      if (/(tech|development|programming|software|code|engineer)/.test(text)) return "#Tech";
+      if (/(study|learn|course|tutorial|education|school|university)/.test(text)) return "#Study";
+      if (/(news|press|journal|media)/.test(text)) return "#News";
+      if (/(shop|buy|store|mall|purchase)/.test(text)) return "#Shopping";
+      if (/(entertainment|movie|music|game|fun|video)/.test(text)) return "#Entertainment";
+      if (/(wechat|weixin|公众号|markdown)/i.test(text)) return "#WeChat";
+    } else {
+      if (/(tech|development|programming|software|code|engineer)/.test(text)) return "#技术";
+      if (/(study|learn|course|tutorial|education|school|university)/.test(text)) return "#学习";
+      if (/(news|press|journal|media)/.test(text)) return "#新闻";
+      if (/(shop|buy|store|mall|purchase)/.test(text)) return "#购物";
+      if (/(entertainment|movie|music|game|fun|video)/.test(text)) return "#娱乐";
+      if (/(wechat|weixin|公众号|markdown)/i.test(text)) return "#公众号";
+    }
+    return null;
+  })();
+  const tags = [...fixed, siteTag, catTag].filter(Boolean);
+  return tags.slice(0, 4);
+}
+
+/**
+ * 分享文案生成：POST /share/summarize
+ * 输入：{ url, title?, provider?, apiKey?, apiUrl?, model? }
+ * 返回：{ text }
+ */
+fastify.post("/share/summarize", async (request, reply) => {
+  try {
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+    reply.header("Access-Control-Allow-Headers", "Content-Type, Accept");
+    const { url, title = "", provider, apiKey, apiUrl, model, lang = "zh" } = request.body || {};
+    let html = "";
+    try {
+      if (url) {
+        const r = await fetch(url, { method: "GET" });
+        html = await r.text();
+      }
+    } catch {}
+    const meta = { url, title, ...extractPageMeta(html) };
+    const aiText = await generateShareCopyWithAI(meta, { provider, apiKey, apiUrl, model, lang });
+    const nonAi = composeShareCopyFromMeta(meta, lang);
+    const tags = composeTagsFromMeta(meta, lang);
+    return { text: aiText || nonAi, tags };
+  } catch (e) {
+    reply.code(500);
+    return { error: String(e) };
+  }
+});
+
+fastify.options("/share/summarize", async (request, reply) => {
+  reply.header("Access-Control-Allow-Origin", "*");
+  reply.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  reply.header("Access-Control-Allow-Headers", "Content-Type, Accept");
+  reply.code(204).send();
+});
+
+/**
  * 启动服务
  */
 async function start() {

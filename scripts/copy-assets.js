@@ -32,6 +32,23 @@ for (const t of iconTargets) {
   }
 }
 
+// 复制 _locales 到输出目录（Manifest default_locale 需要此目录）
+const localesSrc = path.join(process.cwd(), "_locales");
+const localeTargets = [
+  path.join(process.cwd(), ".output", "extension", "_locales"),
+  path.join(process.cwd(), ".output", "chrome-mv3", "_locales"),
+  path.join(process.cwd(), "dist", "_locales"),
+  path.join(process.cwd(), "dist", "chrome-mv3", "_locales"),
+];
+for (const t of localeTargets) {
+  try {
+    copyDir(localesSrc, t);
+    console.log(`Copied locales -> ${t}`);
+  } catch (e) {
+    console.warn(`Copy locales failed for ${t}:`, e?.message || e);
+  }
+}
+
 // 将 .output/chrome-mv3 整体复制到 dist/chrome-mv3，便于在 Finder 中选择加载
 try {
   const from = path.join(process.cwd(), ".output", "chrome-mv3");

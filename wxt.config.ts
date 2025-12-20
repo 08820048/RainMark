@@ -15,6 +15,7 @@ export default defineConfig({
     name: "RainMark - 智能书签管理器",
     description:
       "基于 WXT + React 的现代化智能书签管理扩展，具有自动分类与清理功能",
+    default_locale: "zh_CN",
     permissions: ["bookmarks", "storage", "tabs", "history", "notifications", "alarms"],
     action: {
       // 由 WXT 自动将 src/entrypoints/popup/index.html 构建为 popup.html

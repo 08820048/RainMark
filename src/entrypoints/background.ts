@@ -6,6 +6,22 @@ import { getSettings, setSettings, applyUserRules } from "@shared/storage";
 
 console.log("RainMark background (WXT) starting...");
 
+function t(id: string, args?: Array<string>) {
+  try {
+    const msg = (browser as any)?.i18n?.getMessage?.(id, args ?? []);
+    if (msg) return msg;
+  } catch {}
+  return id;
+}
+
+async function pushToast(payload: { type?: "success" | "info" | "warning" | "error"; title?: string; message: string }) {
+  try {
+    const s = await getSettings();
+    if (s.enableNotifications === false) return;
+    await browser.runtime.sendMessage({ action: "toast", payload });
+  } catch {}
+}
+
 /**
  * 获取或创建分类文件夹并返回其ID
  */
@@ -134,11 +150,10 @@ async function checkInvalidBookmarksNow(): Promise<{ success: boolean; count?: n
       }
       const settings = await getSettings();
       if (settings.enableNotifications !== false) {
-        browser.notifications?.create({
-          type: "basic",
-          iconUrl: "icons/icon48.png",
-          title: "RainMark 书签检查",
-          message: `发现 ${invalid.length} 个失效链接，已移至"失效链接"文件夹`,
+        await pushToast({
+          type: "info",
+          title: t("bg_invalid_title"),
+          message: t("bg_invalid_msg", [String(invalid.length)]),
         });
       }
     }
@@ -185,11 +200,10 @@ export default defineBackground(() => {
         const folderId = await getCategoryFolderId(finalCat || settings.defaultCategory || "其他");
         await browser.bookmarks.move(id, { parentId: folderId });
         if (settings.enableNotifications !== false) {
-          browser.notifications?.create({
-            type: "basic",
-            iconUrl: "icons/icon48.png",
-            title: "RainMark 书签分类",
-            message: `已将 "${bookmark.title}" 分类到 "${finalCat}"`,
+          await pushToast({
+            type: "success",
+            title: t("bg_classify_title"),
+            message: t("bg_classify_msg", [String(bookmark.title || ""), String(finalCat || "")]),
           });
         }
       }

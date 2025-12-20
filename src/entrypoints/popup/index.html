@@ -5,44 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RainMark</title>
     <style>
-      body { width: 400px; min-height: 500px; margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+      body { width: 400px; min-height: 500px; margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); }
       #root { min-height: 500px; }
-      .tab-btn { padding: 8px 12px; border: 1px solid #e5e7eb; background: #f3f4f6; margin-right: 8px; border-radius: 10px; cursor: pointer; transition: all .2s ease; }
-      .tab-btn:hover { background: #eef2ff; border-color: #c7d2fe; }
-      .tab-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
       .list { list-style: none; padding: 0; }
-      .list li { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; will-change: transform, opacity; }
-      .list li:hover { background: #f8fafc; }
+      .list li { padding: 8px; border-bottom: 1px solid var(--rm-border); cursor: pointer; will-change: transform, opacity; }
+      .list li:hover { background: var(--rm-pill-bg); }
       @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
       }
       .toolbar { display: flex; gap: 8px; margin: 8px 0; }
-      .btn { padding: 8px 12px; border: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 10px; cursor: pointer; transition: all .2s ease; color: #111827; }
-      .btn:hover { background: #eef2ff; border-color: #c7d2fe; }
       .btn:active { transform: translateY(1px); }
-      .segmented { display: flex; gap: 6px; align-items: center; background: #f3f4f6; padding: 4px; border-radius: 999px; border: 1px solid #e5e7eb; }
-      .seg-btn { padding: 6px 10px; border-radius: 999px; border: none; background: transparent; cursor: pointer; color: #374151; transition: all .2s ease; }
-      .seg-btn:hover { background: #e5e7eb; }
-      .seg-btn.active { background: #3b82f6; color: #fff; }
-      .search { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; }
-      .stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-      .card { background: #f8fafc; border-radius: 8px; padding: 12px; }
-      .progress { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; margin: 8px 0; }
-      .progress-title { font-size: 13px; color: #374151; margin-bottom: 6px; }
-      .progress-line { width: 100%; height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
-      .progress-line > span { display: block; height: 100%; background: #3b82f6; width: 0%; transition: width .2s ease; }
-      .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.12); display: flex; align-items: center; justify-content: center; z-index: 999; }
-      .modal-card { width: 320px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.12); padding: 14px; }
-      .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-      .modal-desc { font-size: 13px; color: #374151; }
-      .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
       .modal-card .search { width: 100%; box-sizing: border-box; }
-      .menu-btn { width: 28px; height: 28px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; color: #374151; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: all .2s ease; z-index: 1; }
-      .menu-btn:hover { background: #f3f4f6; }
-      .menu { position: absolute; right: 8px; top: 36px; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 10px 30px rgba(0,0,0,.12); border-radius: 10px; padding: 6px; min-width: 140px; z-index: 1000; }
-      .menu-item { padding: 8px 10px; border-radius: 8px; cursor: pointer; color: #111827; }
-      .menu-item:hover { background: #f3f4f6; }
     </style>
   </head>
   <body>

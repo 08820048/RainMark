@@ -5,21 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>RainMark 设置</title>
     <style>
-      body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
-      #root { max-width: 800px; margin: 0 auto; padding: 16px; }
-      .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-      .row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+      body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); }
+      #root { padding: 0; }
+      .header { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--rm-border); background: var(--rm-surface); position: sticky; top: 0; z-index: 100; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--rm-text); }
+      .layout { display: grid; grid-template-columns: 220px 1fr; gap: 0; max-width: 1120px; margin: 12px auto; }
+      .sidebar { background: var(--rm-surface); border-right: 1px solid var(--rm-border); padding: 12px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow: auto; }
+      .nav { display: grid; gap: 8px; }
+      .nav a { color: var(--rm-muted); text-decoration: none; padding: 8px 10px; border-radius: 8px; }
+      .nav a:hover { background: var(--rm-pill-bg); }
+      .content { padding: 16px; }
+      .section { margin-bottom: 16px; }
+      .card { background: var(--rm-surface); border: 1px solid var(--rm-border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+      .row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rm-pill-bg); }
       .row:last-child { border-bottom: none; }
       .btns { display: flex; gap: 8px; margin-top: 12px; }
-      .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; }
-      .btn.primary { background: #3b82f6; color: #fff; border: none; }
-      .input { padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; min-width: 200px; }
+      .input { padding: 8px; border: 1px solid var(--rm-soft-border); border-radius: 8px; min-width: 220px; background: var(--rm-surface); color: var(--rm-text); }
     </style>
-    <script type="module" crossorigin src="/chunks/options-CI_RU9E0.js"></script>
-    <link rel="modulepreload" crossorigin href="/chunks/client-C7wl62iw.js">
+    <script type="module" crossorigin src="/chunks/options-Cu6kupYn.js"></script>
+    <link rel="modulepreload" crossorigin href="/chunks/theme-11K_mN9q.js">
+    <link rel="stylesheet" crossorigin href="/assets/theme-7qwK7F4D.css">
   </head>
   <body>
     <div id="root"></div>
   </body>
 </html>
-

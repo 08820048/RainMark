@@ -5,9 +5,32 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { getAllBookmarks } from "@shared/bookmarks";
 import { browser } from "wxt/browser";
+import { toast } from "@shared/ui/toast";
+import "@shared/ui/theme.css";
 
 type TabKey = "recommendations" | "bookmarks" | "stats";
 
+/**
+ * 获取本地化文案
+ */
+function t(id: string, args?: Array<string | number>) {
+  try {
+    const msg = chrome?.i18n?.getMessage?.(id, args ?? []);
+    if (msg) return msg;
+  } catch {}
+  return id;
+}
+
+/**
+ * 检测用户界面语言（归一化为 zh/en）
+ */
+function detectLang(): "zh" | "en" {
+  try {
+    const ui = String(chrome?.i18n?.getUILanguage?.() || navigator.language || "").toLowerCase();
+    if (ui.startsWith("zh")) return "zh";
+  } catch {}
+  return "en";
+}
 /**
  * Popup 主组件
  */
@@ -56,19 +79,19 @@ function PopupApp() {
     try {
       setRecs([]);
       setLoading(true);
-      setLoadingText("生成推荐中...");
+      setLoadingText(t("loading_generating"));
       const settings = await new Promise<any>((resolve) => {
         chrome.runtime.sendMessage({ action: "getSettings" }, (r: any) => resolve(r));
       });
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      const t = tabs[0];
+      const activeTab = tabs[0];
       const mode = settings?.recommendationMode || "auto";
       const useAI = mode === "ai" || (mode === "auto" && !!settings?.aiApiKey);
       setRecMode(useAI ? "ai" : "local");
       const server = settings?.serverUrl || "http://localhost:5175";
       const allCandidates = await getAllBookmarks();
       const body: any = {
-        current: { title: t?.title || "", url: t?.url || "" },
+        current: { title: activeTab?.title || "", url: activeTab?.url || "" },
         candidates: allCandidates.map((b) => ({ id: b.id, title: b.title, url: b.url })),
         limit: 5,
       };
@@ -101,7 +124,7 @@ function PopupApp() {
       let buffer = "";
       const handleEvent = (event: string, data: any) => {
         if (event === "mode") {
-          setLoadingText(data?.mode === "AI" ? "AI 推荐生成中..." : "生成推荐中...");
+          setLoadingText(data?.mode === "AI" ? t("loading_ai_generating") : t("loading_generating"));
         } else if (event === "reset") {
           setRecs([]);
         } else if (event === "item") {
@@ -235,10 +258,47 @@ function PopupApp() {
   }
 
   /**
-   * 分享到 X（Twitter）
+   * 分享到 X（Twitter）：使用 AI 生成简短功能描述，英文来源 + 标签
    */
-  function shareToX(title: string, url: string) {
-    const u = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title || "")}&url=${encodeURIComponent(
+  async function shareToX(title: string, url: string) {
+    const lang: "zh" | "en" = detectLang();
+    let text = `${t("share_fallback_prefix")}${(title || "").slice(0, 120)}`;
+    let tags: string[] = [];
+    try {
+      const settings = await new Promise<any>((resolve) => {
+        chrome.runtime.sendMessage({ action: "getSettings" }, (r: any) => resolve(r));
+      });
+      const server = settings?.serverUrl || "http://localhost:5175";
+      const resp = await fetch(`${server}/share/summarize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: url || "",
+          title: title || "",
+          provider: settings?.aiProvider,
+          apiKey: settings?.aiApiKey,
+          apiUrl: settings?.aiApiUrl,
+          model: settings?.aiModel,
+          lang,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.text) {
+          text = `🔖 ${String(data.text).trim()}`;
+        }
+        if (Array.isArray(data?.tags)) {
+          tags = data.tags.slice(0, 4);
+        }
+      }
+    } catch (e) {
+      // ignore and fallback to default text
+    }
+    if (!tags.length) {
+      tags = lang === "en" ? ["#RainMarkExtension", "#Bookmarks"] : ["#RainMark插件", "#书签"];
+    }
+    const suffix = `${t("share_suffix_source")} ${tags.join(" ")}`.trim();
+    const u = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${text}\n${suffix}`)}&url=${encodeURIComponent(
       url || "",
     )}`;
     window.open(u, "_blank");
@@ -253,6 +313,15 @@ function PopupApp() {
         const c = Number(msg.current || 0);
         const t = Number(msg.total || 0);
         setCheckProgress({ current: c, total: t });
+      } else if (msg?.action === "toast" && msg?.payload) {
+        const p = msg.payload || {};
+        const type = p.type || "info";
+        const title = p.title || "";
+        const message = p.message || "";
+        if (type === "success") toast.success(message, title);
+        else if (type === "warning") toast.warning(message, title);
+        else if (type === "error") toast.error(message, title);
+        else toast.info(message, title);
       }
     };
     chrome.runtime.onMessage?.addListener(handler);
@@ -297,7 +366,7 @@ function PopupApp() {
       ),
     );
     await loadAll();
-    alert(`清理完成！移除了 ${dupIds.length} 个重复书签。`);
+    toast.success(t("alert_clean_done", [dupIds.length]));
   }
 
   /**
@@ -319,13 +388,13 @@ function PopupApp() {
     <div style={{ padding: 12 }}>
       <div className="toolbar">
         <button className={`tab-btn ${tab === "recommendations" ? "active" : ""}`} onClick={() => setTab("recommendations")}>
-          推荐
+          {t("tab_recommendations")}
         </button>
         <button className={`tab-btn ${tab === "bookmarks" ? "active" : ""}`} onClick={() => setTab("bookmarks")}>
-          书签
+          {t("tab_bookmarks")}
         </button>
         <button className={`tab-btn ${tab === "stats" ? "active" : ""}`} onClick={() => setTab("stats")}>
-          统计
+          {t("tab_stats")}
         </button>
       </div>
 
@@ -333,31 +402,31 @@ function PopupApp() {
         <div>
           <input
             className="search"
-            placeholder="搜索书签..."
+            placeholder={t("search_placeholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <div style={{ marginTop: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3>智能推荐</h3>
+              <h3>{t("section_recommend")}</h3>
               <div className="segmented" title="推荐模式">
                 <button
                   className={`seg-btn ${recMode === "local" ? "active" : ""}`}
                   onClick={() => toggleRecommendationMode("local")}
                 >
-                  本地
+                  {t("seg_local")}
                 </button>
                 <button
                   className={`seg-btn ${recMode === "ai" ? "active" : ""}`}
                   onClick={() => toggleRecommendationMode("ai")}
                 >
-                  AI
+                  {t("seg_ai")}
                 </button>
               </div>
             </div>
             {loading && <div className="loading-text">{loadingText}</div>}
             <ul className="list">
-              {recs.length === 0 && <li>暂无推荐</li>}
+              {recs.length === 0 && <li>{t("no_recommendations")}</li>}
               {recs.map((b, i) => (
                 <li
                   key={b.id}
@@ -386,7 +455,7 @@ function PopupApp() {
                           marginLeft: 8,
                         }}
                       >
-                        {b.source === "AI" ? "AI 推荐" : "本地推荐"}
+                        {b.source === "AI" ? t("label_ai_recommend") : t("label_local_recommend")}
                       </span>
                     )}
                     <div style={{ marginLeft: 8 }}>
@@ -396,8 +465,8 @@ function PopupApp() {
                           e.stopPropagation();
                           toggleMenu("recs", b.id);
                         }}
-                        aria-label="更多操作"
-                        title="更多操作"
+                        aria-label={t("menu_more_actions")}
+                        title={t("menu_more_actions")}
                       >
                         ⋯
                       </button>
@@ -406,9 +475,9 @@ function PopupApp() {
                   <small style={{ color: "#6b7280" }}>{b.url}</small>
                   {openMenu && openMenu.list === "recs" && openMenu.id === b.id && (
                     <div className="menu" onClick={(e) => e.stopPropagation()}>
-                      <div className="menu-item" onClick={() => removeBookmark(b.id)}>移除</div>
-                      <div className="menu-item" onClick={() => openEdit(b.id, b.title, b.url)}>更新</div>
-                      <div className="menu-item" onClick={() => shareToX(b.title, b.url)}>分享到 X</div>
+                      <div className="menu-item" onClick={() => removeBookmark(b.id)}>{t("menu_remove")}</div>
+                      <div className="menu-item" onClick={() => openEdit(b.id, b.title, b.url)}>{t("menu_update")}</div>
+                      <div className="menu-item" onClick={() => shareToX(b.title, b.url)}>{t("menu_share_x")}</div>
                     </div>
                   )}
                 </li>
@@ -416,14 +485,27 @@ function PopupApp() {
             </ul>
           </div>
           <div className="toolbar">
-            <button className="btn" onClick={cleanDuplicates}>清理重复</button>
-            <button className="btn" disabled={checkingInvalid} onClick={checkInvalid}>检查失效链接</button>
-            <button className="btn" onClick={() => chrome.runtime.openOptionsPage?.()}>打开设置</button>
+            <button className="btn" onClick={cleanDuplicates}>{t("btn_clean_duplicates")}</button>
+            <button className="btn" disabled={checkingInvalid} onClick={checkInvalid}>{t("btn_check_invalid")}</button>
+            <button
+              className="btn"
+              onClick={() => {
+                try {
+                  const url = chrome?.runtime?.getURL?.("options.html");
+                  if (url) chrome.tabs?.create?.({ url });
+                  else chrome.runtime.openOptionsPage?.();
+                } catch {
+                  chrome.runtime.openOptionsPage?.();
+                }
+              }}
+            >
+              {t("btn_open_settings")}
+            </button>
           </div>
           {checkingInvalid && (
             <div className="progress">
               <div className="progress-title">
-                正在检测失效链接... {checkProgress.current}/{checkProgress.total || "?"}
+                {t("progress_checking", [checkProgress.current, checkProgress.total || "?"])}
               </div>
               <div className="progress-line">
                 <span style={{ width: `${checkProgress.total ? Math.round((checkProgress.current / checkProgress.total) * 100) : 0}%` }} />
@@ -437,12 +519,12 @@ function PopupApp() {
         <div>
           <input
             className="search"
-            placeholder="搜索书签..."
+            placeholder={t("search_placeholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <ul className="list">
-            {filtered.length === 0 && <li>暂无书签</li>}
+            {filtered.length === 0 && <li>{t("no_bookmarks")}</li>}
             {filtered.map((b) => (
               <li
                 key={b.id}
@@ -464,17 +546,17 @@ function PopupApp() {
                       e.stopPropagation();
                       toggleMenu("bookmarks", b.id);
                     }}
-                    aria-label="更多操作"
-                    title="更多操作"
+                    aria-label={t("menu_more_actions")}
+                    title={t("menu_more_actions")}
                   >
                     ⋯
                   </button>
                 </div>
                 {openMenu && openMenu.list === "bookmarks" && openMenu.id === b.id && (
                   <div className="menu" onClick={(e) => e.stopPropagation()}>
-                    <div className="menu-item" onClick={() => removeBookmark(b.id)}>移除</div>
-                    <div className="menu-item" onClick={() => openEdit(b.id, b.title, b.url)}>更新</div>
-                    <div className="menu-item" onClick={() => shareToX(b.title, b.url)}>分享到 X</div>
+                    <div className="menu-item" onClick={() => removeBookmark(b.id)}>{t("menu_remove")}</div>
+                    <div className="menu-item" onClick={() => openEdit(b.id, b.title, b.url)}>{t("menu_update")}</div>
+                    <div className="menu-item" onClick={() => shareToX(b.title, b.url)}>{t("menu_share_x")}</div>
                   </div>
                 )}
               </li>
@@ -486,15 +568,15 @@ function PopupApp() {
       {tab === "stats" && (
         <div className="stat">
           <div className="card">
-            <div>总书签数</div>
+            <div>{t("stat_total_bookmarks")}</div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{stats.total}</div>
           </div>
           <div className="card">
-            <div>分类数量</div>
+            <div>{t("stat_categories")}</div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{stats.categories}</div>
           </div>
           <div className="card">
-            <div>重复书签</div>
+            <div>{t("stat_duplicates")}</div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{stats.duplicates}</div>
           </div>
         </div>
@@ -503,12 +585,12 @@ function PopupApp() {
     {checkResult && (
       <div className="modal-backdrop" onClick={() => setCheckResult(null)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-title">检测完成</div>
+          <div className="modal-title">{t("modal_check_done_title")}</div>
           <div className="modal-desc">
-            共发现 <strong>{checkResult.count ?? 0}</strong> 个失效链接，已归档至“失效链接”。
+            {t("modal_check_done_desc", [checkResult.count ?? 0])}
           </div>
           <div className="modal-actions">
-            <button className="btn" onClick={() => setCheckResult(null)}>关闭</button>
+            <button className="btn" onClick={() => setCheckResult(null)}>{t("btn_close")}</button>
           </div>
         </div>
       </div>
@@ -516,16 +598,16 @@ function PopupApp() {
     {editTarget && (
       <div className="modal-backdrop" onClick={() => setEditTarget(null)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-title">更新书签</div>
+          <div className="modal-title">{t("modal_update_title")}</div>
           <div className="modal-desc">
             <div style={{ display: "grid", gap: 8 }}>
-              <input className="search" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="标题" />
-              <input className="search" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} placeholder="URL" />
+              <input className="search" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={t("placeholder_title")} />
+              <input className="search" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} placeholder={t("placeholder_url")} />
             </div>
           </div>
           <div className="modal-actions">
-            <button className="btn" onClick={() => setEditTarget(null)}>取消</button>
-            <button className="btn primary" onClick={saveEdit}>保存</button>
+            <button className="btn" onClick={() => setEditTarget(null)}>{t("btn_cancel")}</button>
+            <button className="btn primary" onClick={saveEdit}>{t("btn_save")}</button>
           </div>
         </div>
       </div>
