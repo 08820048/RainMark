@@ -4,11 +4,15 @@
   "description": "智能书签管理Chrome扩展 - 自动分类、智能推荐、书签清理",
   "main": "background.js",
   "scripts": {
-    "build": "echo '构建完成'",
-    "test": "echo '运行测试'",
-    "lint": "echo '代码检查'",
-    "format": "echo '代码格式化'",
-    "dev": "echo '开发模式'"
+    "dev": "wxt dev",
+    "build": "wxt build && node scripts/copy-assets.js",
+    "server": "node server/index.js",
+    "test": "echo '运行测试（未配置）'",
+    "lint": "echo '代码检查（未配置）'",
+    "typecheck": "tsc --noEmit",
+    "format": "echo '代码格式化（未配置）'",
+    "clean": "rm -rf dist .output",
+    "release": "npm run build && cd dist/chrome-mv3 && zip -r ../RainMark-chrome-mv3-v$npm_package_version.zip ."
   },
   "keywords": [
     "chrome-extension",
@@ -34,8 +38,21 @@
     "node": ">=14.0.0",
     "npm": ">=6.0.0"
   },
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "wxt": "^0.19.16"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.0.0",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@types/chrome": "^0.0.270",
+    "@wxt-dev/module-react": "^1.0.0"
+  },
   "chromeExtension": {
     "manifest_version": 3,
     "permissions": [
