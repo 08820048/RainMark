@@ -44,6 +44,7 @@ jspm_packages/
 dist/
 build/
 out-tsc/
+.output/
 
 # 临时文件
 *.tmp

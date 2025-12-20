@@ -3,7 +3,7 @@ declare const chrome: any;
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { getAllBookmarks } from "@shared/bookmarks";
+import { getAllBookmarks, extractKeywords, jaccardSimilarity } from "@shared/bookmarks";
 import { browser } from "wxt/browser";
 import { toast } from "@shared/ui/toast";
 import "@shared/ui/theme.css";
@@ -91,6 +91,28 @@ function PopupApp() {
   }
 
   /**
+   * 基于查询字符串的本地推荐（Jaccard）
+   */
+  function computeLocalQueryRecommendations(
+    query: string,
+    candidates: Array<{ id: string; title: string; url: string }>
+  ): Array<{ id: string; title: string; url: string; score: number; source: "Local" }> {
+    const qKeywords = extractKeywords(String(query || ""));
+    const scored = candidates
+      .map((b) => {
+        const ks = extractKeywords(`${b.title} ${b.url}`);
+        const base = jaccardSimilarity(qKeywords, ks);
+        const text = (b.title + " " + b.url).toLowerCase();
+        const hits = qKeywords.length ? qKeywords.filter((t) => text.includes(t)).length : 0;
+        const boost = qKeywords.length ? (hits / qKeywords.length) * 0.2 : 0;
+        const s = base + boost;
+        return { id: b.id, title: b.title, url: b.url, score: s, source: "Local" as const };
+      })
+      .sort((a, b) => b.score - a.score);
+    return scored.slice(0, 5);
+  }
+
+  /**
    * 基于搜索需求的流式推荐（书签页）
    */
   async function loadQueryRecommendationsStream() {
@@ -135,6 +157,7 @@ function PopupApp() {
         signal: ac.signal,
       });
       if (!resp.ok || !resp.body) {
+        setServerConnected(false);
         // 回退一次性推荐
         const once = await fetch(`${server}/recommend/query`, {
           method: "POST",
@@ -143,29 +166,40 @@ function PopupApp() {
         });
         const data = await once.json();
         const recs = (data?.recommendations ?? []) as Array<{ id: string; title: string; url: string; score: number }>;
-        setQueryRecs(Array.isArray(recs) ? recs.map((r) => ({ ...r, source: useAI ? "AI" : "Local" })) : []);
+        if (Array.isArray(recs) && recs.length) {
+          setQueryRecs(recs.map((r) => ({ ...r, source: useAI ? "AI" : "Local" })));
+        } else {
+          setQueryRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+        }
         setQueryLoading(false);
         setQueryLoadingText("");
         return;
       }
+      setServerConnected(true);
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let qReceivedAny = false;
       const handleEvent = (event: string, data: any) => {
         if (event === "mode") {
           setQueryLoadingText(data?.mode === "AI" ? t("loading_ai_generating") : t("loading_generating"));
         } else if (event === "reset") {
           setQueryRecs([]);
         } else if (event === "item") {
+          qReceivedAny = true;
           setQueryRecs((prev) => [...prev, data]);
         } else if (event === "done") {
           setQueryLoading(false);
           setQueryLoadingText("");
+          if (!qReceivedAny) {
+            setQueryRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+          }
         } else if (event === "error") {
           const msg = typeof data?.error === "string" ? data.error : t("alert_ai_failed");
           toast.error(msg);
           setQueryLoading(false);
           setQueryLoadingText("");
+          setServerConnected(false);
         }
       };
       while (true) {
@@ -214,10 +248,20 @@ function PopupApp() {
         });
         const data = await once.json();
         const recs = (data?.recommendations ?? []) as Array<{ id: string; title: string; url: string; score: number }>;
-        setQueryRecs(Array.isArray(recs) ? recs : []);
+        if (Array.isArray(recs) && recs.length) {
+          setQueryRecs(recs);
+        } else {
+          setQueryRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+        }
       } catch (err) {
         console.error("query recommend fallback failed:", err);
-        setQueryRecs([]);
+        try {
+          const qInput = search.trim();
+          const allCandidates = await getAllBookmarks();
+          setQueryRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+        } catch {
+          setQueryRecs([]);
+        }
       } finally {
         setQueryLoading(false);
         setQueryLoadingText("");
@@ -304,9 +348,13 @@ function PopupApp() {
             });
             const data = await once.json();
             const recs = (data?.recommendations ?? []) as Array<{ id: string; title: string; url: string; score: number }>;
-            setRecs(Array.isArray(recs) ? recs : []);
+            if (Array.isArray(recs) && recs.length) {
+              setRecs(recs);
+            } else {
+              setRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+            }
           } catch {
-            setRecs([]);
+            setRecs(computeLocalQueryRecommendations(qInput, allCandidates));
           } finally {
             setLoading(false);
             setLoadingText("");
@@ -363,12 +411,15 @@ function PopupApp() {
           setLoading(false);
           setLoadingText("");
           if (!receivedAny) {
-            // 无任何返回项时，兜底给出前5条书签（Local）
-            setRecs(
-              allCandidates
-                .slice(0, 5)
-                .map((b) => ({ id: b.id, title: b.title, url: b.url, score: 0, source: "Local" as const })),
-            );
+            if (isQuery) {
+              setRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+            } else {
+              setRecs(
+                allCandidates
+                  .slice(0, 5)
+                  .map((b) => ({ id: b.id, title: b.title, url: b.url, score: 0, source: "Local" as const })),
+              );
+            }
           }
         } else if (event === "error") {
           const msg = typeof data?.error === "string" ? data.error : t("alert_ai_failed");
@@ -424,9 +475,13 @@ function PopupApp() {
             });
             const data = await once.json();
             const recs = (data?.recommendations ?? []) as Array<{ id: string; title: string; url: string; score: number }>;
-            setRecs(Array.isArray(recs) ? recs : []);
+            if (Array.isArray(recs) && recs.length) {
+              setRecs(recs);
+            } else {
+              setRecs(computeLocalQueryRecommendations(qInput, allCandidates));
+            }
           } catch {
-            setRecs([]);
+            setRecs(computeLocalQueryRecommendations(qInput, allCandidates));
           }
         } else {
           // 先尝试一次性服务端推荐

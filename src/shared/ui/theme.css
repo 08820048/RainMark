@@ -83,6 +83,7 @@
   border-radius: var(--rm-btn-radius);
   cursor: pointer;
   transition: all .2s ease;
+  color: var(--rm-text);
 }
 .tab-btn:hover { background: var(--rm-pill-hover); border-color: #c7d2fe; }
 .tab-btn.active { background: var(--rm-primary); color: #fff; border-color: var(--rm-primary); }

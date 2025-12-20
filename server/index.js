@@ -22,18 +22,30 @@ fastify.addHook("onSend", async (request, reply, payload) => {
 });
 
 /**
- * 提取关键词与 Jaccard（服务端版本）
+ * 提取关键词与 Jaccard（服务端版本，中文使用二元分词）
  */
 function extractKeywordsServer(text) {
-  const words = String(text || "")
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 2);
+  const lower = String(text || "").toLowerCase();
+  // 中文：匹配连续汉字序列并生成二元分词（含单字兜底）
+  const hanSeqs = lower.match(/\p{Script=Han}+/gu) || [];
+  const hanTokens = [];
+  for (const seq of hanSeqs) {
+    if (!seq) continue;
+    if (seq.length === 1) {
+      hanTokens.push(seq);
+    } else {
+      for (let i = 0; i < seq.length - 1; i++) {
+        hanTokens.push(seq.slice(i, i + 2));
+      }
+    }
+  }
+  // 英文/数字：按词提取，长度>=3
+  const latinWords = lower.match(/[a-z0-9]{3,}/g) || [];
   const stop = new Set([
     "the","and","or","but","in","on","at","to","for","of","with","by","a","an","is","are","was","were","be","been","being","have","has","had","do","does","did","will","would","should","could","can","may","might","must","this","that","these","those","then","than","from",
   ]);
-  return words.filter((w) => !stop.has(w));
+  const filteredLatin = latinWords.filter((w) => !stop.has(w));
+  return [...hanTokens, ...filteredLatin];
 }
 function jaccardServer(k1, k2) {
   const set1 = new Set(k1);
@@ -293,9 +305,14 @@ fastify.post("/recommend/query", async (request, reply) => {
     reply.header("Access-Control-Allow-Headers", "Content-Type");
     const { query = "", candidates = [], provider, apiKey, apiUrl, model, limit = 5 } = request.body || {};
     const curK = extractKeywordsServer(String(query || ""));
+    const qTokens = curK;
     const scored = (candidates || []).map((c) => {
       const ks = extractKeywordsServer(`${c.title || ""} ${c.url || ""}`);
-      const s = jaccardServer(curK, ks);
+      const base = jaccardServer(curK, ks);
+      const text = String(`${c.title || ""} ${c.url || ""}`).toLowerCase();
+      const hits = qTokens.length ? qTokens.filter((t) => text.includes(t)).length : 0;
+      const boost = qTokens.length ? (hits / qTokens.length) * 0.2 : 0;
+      const s = base + boost;
       return { ...c, score: s };
     });
     scored.sort((a, b) => b.score - a.score);
@@ -433,9 +450,14 @@ fastify.post("/recommend/query/stream", async (request, reply) => {
   };
   try {
     const curK = extractKeywordsServer(String(query || ""));
+    const qTokens = curK;
     const scored = (candidates || []).map((c) => {
       const ks = extractKeywordsServer(`${c.title || ""} ${c.url || ""}`);
-      const s = jaccardServer(curK, ks);
+      const base = jaccardServer(curK, ks);
+      const text = String(`${c.title || ""} ${c.url || ""}`).toLowerCase();
+      const hits = qTokens.length ? qTokens.filter((t) => text.includes(t)).length : 0;
+      const boost = qTokens.length ? (hits / qTokens.length) * 0.2 : 0;
+      const s = base + boost;
       return { ...c, score: s };
     });
     scored.sort((a, b) => b.score - a.score);
