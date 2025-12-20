@@ -44,7 +44,7 @@ export default defineConfig({
     ],
     content_security_policy: {
       extension_pages:
-        "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* http://192.168.1.4:* https://api.deepseek.com https://api.openai.com;",
+        "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* http://192.168.1.4:* https://api.deepseek.com;",
     },
   },
 });

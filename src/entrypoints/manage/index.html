@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RainMark 管理</title>
+    <style>
+      body { margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); }
+      #root { min-height: 100vh; border: 2px solid var(--rm-primary); border-radius: 12px; margin: 8px; box-sizing: border-box; background: var(--rm-surface); box-shadow: 0 6px 16px rgba(0,0,0,.06); }
+      .grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+      .card-title { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 8px; }
+      .card-list { display: grid; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px; }
+      .item { display: grid; grid-template-columns: 20px 1fr; align-items: center; gap: 8px; cursor: pointer; width: 100%; }
+      .item:hover { background: var(--rm-primary); color: #fff; }
+      .item:hover small { color: #fff; }
+      .item small { color: var(--rm-muted); }
+      .toolbar { display: flex; gap: 8px; margin: 8px 0; }
+      .layout { grid-template-columns: 1fr !important; }
+      .truncate { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+      .item .text { flex: 1; min-width: 0; }
+      .card { display: flex; flex-direction: column; flex: 1 1 280px; align-self: flex-start; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

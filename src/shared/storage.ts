@@ -9,8 +9,9 @@ export type Settings = {
   checkFrequency: string;
   autoCleanDuplicates: boolean;
   defaultCategory: string;
+  themeAccent?: string;
   serverUrl?: string;
-  aiProvider?: "deepseek" | "openai";
+  aiProvider?: "deepseek";
   aiApiKey?: string;
   aiModel?: string;
   aiApiUrl?: string;
@@ -30,6 +31,7 @@ export async function getSettings(): Promise<Settings> {
     "checkFrequency",
     "autoCleanDuplicates",
     "defaultCategory",
+    "themeAccent",
     "serverUrl",
     "aiProvider",
     "aiApiKey",
@@ -46,8 +48,9 @@ export async function getSettings(): Promise<Settings> {
     checkFrequency: data.checkFrequency ?? "60",
     autoCleanDuplicates: !!data.autoCleanDuplicates,
     defaultCategory: data.defaultCategory ?? "其他",
+    themeAccent: data.themeAccent ?? "rgba(0, 186, 189, 1)",
     serverUrl: data.serverUrl ?? "http://localhost:5175",
-    aiProvider: (data.aiProvider as "deepseek" | "openai") ?? "deepseek",
+    aiProvider: (data.aiProvider as "deepseek") ?? "deepseek",
     aiApiKey: data.aiApiKey ?? "",
     aiModel: data.aiModel ?? "deepseek-chat",
     aiApiUrl: data.aiApiUrl ?? "https://api.deepseek.com",

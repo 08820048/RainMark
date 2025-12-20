@@ -73,7 +73,7 @@ function ToastHost() {
       <style>
         {`
         .rm-toast-wrap{position:fixed;top:12px;right:12px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none}
-        .rm-toast{min-width:280px;max-width:360px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:10px 12px;display:flex;align-items:flex-start;gap:10px;pointer-events:auto;animation:rm-fade-in .16s ease-out}
+        .rm-toast{min-width:280px;max-width:360px;background:#fff;border:1px solid #e5e7eb;border-radius:0;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:10px 12px;display:flex;align-items:flex-start;gap:10px;pointer-events:auto;animation:rm-fade-in .16s ease-out}
         .rm-toast-title{font-weight:600;font-size:14px;color:#111827}
         .rm-toast-msg{font-size:13px;color:#374151}
         .rm-toast-close{margin-left:auto;border:none;background:transparent;color:#6b7280;font-size:16px;cursor:pointer}

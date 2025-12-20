@@ -91,10 +91,7 @@ async function getRecommendations(): Promise<
         // ignore and fallback to local
       }
     }
-    return localTop
-      .filter((x) => x.score > 0.3)
-      .slice(0, 5)
-      .map((r) => ({ ...r, source: "Local" }));
+    return localTop.slice(0, 5).map((r) => ({ ...r, source: "Local" }));
   } catch (e) {
     console.error("Error getting recommendations:", e);
     return [];

@@ -39,19 +39,20 @@
     "npm": ">=6.0.0"
   },
   "dependencies": {
-    "fastify": "^5.0.0",
     "@fastify/cors": "^10.0.0",
+    "fastify": "^5.0.0",
+    "lucide-react": "^0.562.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "wxt": "^0.19.16"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
-    "vite": "^5.0.0",
+    "@types/chrome": "^0.0.270",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@types/chrome": "^0.0.270",
-    "@wxt-dev/module-react": "^1.0.0"
+    "@wxt-dev/module-react": "^1.0.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.0.0"
   },
   "chromeExtension": {
     "manifest_version": 3,

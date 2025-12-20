@@ -44,16 +44,27 @@ function jaccardServer(k1, k2) {
 }
 
 /**
- * 使用 LLM 进行分类（支持 DeepSeek / OpenAI）
- * 根据环境变量自动选择提供商，不会记录任何密钥
- */
-/**
- * 分类（AI）：支持从请求提供的选项或环境变量读取配置
+ * 分类（AI）：仅支持 DeepSeek
  */
 async function classifyWithAI(title, url, opts = {}) {
-  const provider = (process.env.AI_PROVIDER || "").toLowerCase();
   const deepseekKey = opts.apiKey || process.env.DEEPSEEK_API_KEY;
-  const openaiKey = opts.apiKey || process.env.OPENAI_API_KEY;
+  function pickBase(p, given) {
+    const def = "https://api.deepseek.com";
+    if (!given) return def;
+    const lower = String(given).toLowerCase();
+    if (lower.includes("deepseek")) return given;
+    return def;
+  }
+  function normalizeContent(msg) {
+    if (typeof msg === "string") return msg.trim();
+    if (Array.isArray(msg)) {
+      const s = msg
+        .map((p) => (typeof p === "string" ? p : (p && (p.text || p.content)) || ""))
+        .join("");
+      return String(s).trim();
+    }
+    return "";
+  }
   const prompt = `
 你是一个书签分类器，请根据标题与URL将书签归到以下类别之一，并只返回类别名：
 - 工作
@@ -75,42 +86,21 @@ URL: ${url}
   };
   const allowed = new Set(["工作", "学习", "娱乐", "新闻", "技术", "购物", "其他"]);
   try {
-    // DeepSeek 优先（若 AI_PROVIDER=deepseek 或提供了 DEEPSEEK_API_KEY）
-    if ((opts.provider === "deepseek") || provider === "deepseek" || deepseekKey) {
-      const urlBase = opts.apiUrl || process.env.DEEPSEEK_API_URL || "https://api.deepseek.com";
-      const model = opts.model || process.env.DEEPSEEK_MODEL || "deepseek-chat";
-      const res = await fetch(`${urlBase}/v1/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${deepseekKey}`,
-        },
-        body: JSON.stringify({ ...payload, model }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim() || "";
-      if (allowed.has(text)) return text;
-      return "其他";
-    }
-    // OpenAI 作为后备
-    if ((opts.provider === "openai") || openaiKey) {
-      const model = opts.model || process.env.OPENAI_MODEL || "gpt-4o-mini";
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openaiKey}`,
-        },
-        body: JSON.stringify({ ...payload, model }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim() || "";
-      if (allowed.has(text)) return text;
-      return "其他";
-    }
-    return null;
+    const urlBase = pickBase("deepseek", opts.apiUrl || process.env.DEEPSEEK_API_URL);
+    const model = opts.model || process.env.DEEPSEEK_MODEL || "deepseek-chat";
+    const res = await fetch(`${urlBase}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${deepseekKey}`,
+      },
+      body: JSON.stringify({ ...payload, model }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = normalizeContent(data?.choices?.[0]?.message?.content);
+    if (allowed.has(text)) return text;
+    return "其他";
   } catch {
     return null;
   }
@@ -120,9 +110,8 @@ URL: ${url}
  * AI 重排候选推荐
  */
 async function aiRerankCandidates(candidates, current, opts = {}) {
-  const provider = (opts.provider || "").toLowerCase();
   const apiKey = opts.apiKey;
-  const model = opts.model || (provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini");
+  const model = opts.model || "deepseek-chat";
   if (!apiKey) return null;
   const prompt = {
     task: "对候选书签进行相关性排序，返回 JSON 格式：[{id:string, score:number}]，score 范围 0-1，最多返回 5 条。",
@@ -154,32 +143,48 @@ async function aiRerankCandidates(candidates, current, opts = {}) {
     return null;
   }
   try {
-    if (provider === "deepseek") {
-      const base = opts.apiUrl || "https://api.deepseek.com";
-      const res = await fetch(`${base}/v1/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, temperature: 0 }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim() || "[]";
-      const parsed = safeParseArray(text);
-      if (parsed) return parsed;
-      return null;
-    } else {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, temperature: 0 }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim() || "[]";
-      const parsed = safeParseArray(text);
-      if (parsed) return parsed;
-      return null;
+    function pickBase(p, given) {
+      const def = "https://api.deepseek.com";
+      if (!given) return def;
+      const lower = String(given).toLowerCase();
+      if (lower.includes("deepseek")) return given;
+      return def;
     }
+    const base = pickBase("deepseek", opts.apiUrl);
+    const res = await fetch(`${base}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages, temperature: 0, response_format: { type: "json_object" } }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const text = (function normalizeContentFull(d) {
+        if (d?.choices?.[0]?.message?.parsed) {
+          try {
+            return JSON.stringify(d.choices[0].message.parsed);
+          } catch {
+            const p = d.choices[0].message.parsed;
+            if (Array.isArray(p)) {
+              try {
+                return JSON.stringify(p);
+              } catch {}
+            }
+          }
+        }
+        const msg = d?.choices?.[0]?.message?.content;
+        if (typeof msg === "string") return msg.trim();
+        if (Array.isArray(msg)) {
+          const s = msg
+            .map((p) => (typeof p === "string" ? p : (p && (p.text || p.content)) || ""))
+            .join("");
+          return String(s).trim();
+        }
+        return "";
+      })(data) || "[]";
+      const parsed = safeParseArray(text);
+      if (parsed) return parsed;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -277,6 +282,42 @@ fastify.post("/recommend", async (request, reply) => {
   }
 });
 
+/**
+ * 基于查询需求的推荐：POST /recommend/query
+ * 输入：{ query: string, candidates: [{id,title,url}], provider?, apiKey?, apiUrl?, model?, limit? }
+ */
+fastify.post("/recommend/query", async (request, reply) => {
+  try {
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+    reply.header("Access-Control-Allow-Headers", "Content-Type");
+    const { query = "", candidates = [], provider, apiKey, apiUrl, model, limit = 5 } = request.body || {};
+    const curK = extractKeywordsServer(String(query || ""));
+    const scored = (candidates || []).map((c) => {
+      const ks = extractKeywordsServer(`${c.title || ""} ${c.url || ""}`);
+      const s = jaccardServer(curK, ks);
+      return { ...c, score: s };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored.slice(0, Math.max(10, limit * 4));
+    let final = top;
+    const aiResults = await aiRerankCandidates(top, { title: String(query || ""), url: "" }, { provider, apiKey, apiUrl, model });
+    if (aiResults && Array.isArray(aiResults)) {
+      const scoreMap = new Map(aiResults.map((r) => [r.id, Number(r.score) || 0]));
+      final = top
+        .map((c) => ({ ...c, score: scoreMap.has(c.id) ? scoreMap.get(c.id) : c.score }))
+        .sort((a, b) => b.score - a.score);
+      fastify.log.info({ provider }, "recommend/query: AI rerank applied");
+    } else {
+      fastify.log.info({ provider }, "recommend/query: fallback to local ranking");
+    }
+    return { recommendations: final.slice(0, limit) };
+  } catch (e) {
+    reply.code(500);
+    return { error: String(e) };
+  }
+});
+
 fastify.options("/recommend", async (request, reply) => {
   reply.header("Access-Control-Allow-Origin", "*");
   reply.header("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -322,7 +363,7 @@ fastify.post("/recommend/stream", async (request, reply) => {
     });
     scored.sort((a, b) => b.score - a.score);
     const top = scored.slice(0, Math.max(10, limit * 4));
-    const useAI = !!apiKey && (provider === "deepseek" || provider === "openai");
+    const useAI = !!apiKey && (provider === "deepseek");
     await send("mode", { mode: useAI ? "AI" : "Local" });
     for (const item of top.slice(0, limit)) {
       await send("item", { ...item, source: "Local" }, 40);
@@ -339,6 +380,8 @@ fastify.post("/recommend/stream", async (request, reply) => {
         for (const item of final) {
           await send("item", { ...item, source: "AI" }, 60);
         }
+      } else {
+        await send("error", { error: "AI rerank returned empty" });
       }
     }
     await send("done", {});
@@ -351,6 +394,169 @@ fastify.post("/recommend/stream", async (request, reply) => {
     try {
       reply.raw.end();
     } catch {}
+  }
+});
+
+// CORS plugin handles OPTIONS preflight globally; no explicit route needed here
+
+/**
+ * 基于查询需求的推荐（SSE）：POST /recommend/query/stream
+ * 输入：{ query: string, candidates: [{id,title,url}], provider?, apiKey?, apiUrl?, model?, limit? }
+ * 事件：mode/item/reset/error/done
+ */
+fastify.post("/recommend/query/stream", async (request, reply) => {
+  const { query = "", candidates = [], provider, apiKey, apiUrl, model, limit = 5 } = request.body || {};
+  try {
+    reply.raw.setHeader("Access-Control-Allow-Origin", "*");
+    reply.raw.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    reply.raw.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+    reply.raw.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    reply.raw.setHeader("Cache-Control", "no-cache");
+    reply.raw.setHeader("Connection", "keep-alive");
+    if (typeof reply.raw.flushHeaders === "function") {
+      try {
+        reply.raw.flushHeaders();
+      } catch {}
+    }
+  } catch {}
+  const send = async (event, data, waitMs = 0) => {
+    try {
+      reply.raw.write(`event: ${event}\n`);
+      reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      reply.raw.write(`: ping\n\n`);
+    } catch {}
+    if (waitMs > 0) {
+      await new Promise((r) => setTimeout(r, waitMs));
+    } else {
+      await new Promise((r) => setImmediate(r));
+    }
+  };
+  try {
+    const curK = extractKeywordsServer(String(query || ""));
+    const scored = (candidates || []).map((c) => {
+      const ks = extractKeywordsServer(`${c.title || ""} ${c.url || ""}`);
+      const s = jaccardServer(curK, ks);
+      return { ...c, score: s };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored.slice(0, Math.max(10, limit * 4));
+    const useAI = !!apiKey && (provider === "deepseek");
+    await send("mode", { mode: useAI ? "AI" : "Local" });
+    for (const item of top.slice(0, limit)) {
+      await send("item", { ...item, source: "Local" }, 40);
+    }
+    if (useAI) {
+      const aiResults = await aiRerankCandidates(top, { title: String(query || ""), url: "" }, { provider, apiKey, apiUrl, model });
+      if (aiResults && Array.isArray(aiResults)) {
+        const scoreMap = new Map(aiResults.map((r) => [r.id, Number(r.score) || 0]));
+        const final = top
+          .map((c) => ({ ...c, score: scoreMap.has(c.id) ? scoreMap.get(c.id) : c.score }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+        await send("reset", {});
+        for (const item of final) {
+          await send("item", { ...item, source: "AI" }, 60);
+        }
+      } else {
+        await send("error", { error: "AI rerank returned empty" });
+      }
+    }
+    await send("done", {});
+    reply.raw.end();
+  } catch (e) {
+    try {
+      await send("error", { error: String(e) });
+      await send("done", {});
+    } catch {}
+    try {
+      reply.raw.end();
+    } catch {}
+  }
+});
+
+/**
+ * 模型列表接口：POST /models
+ * 输入：{ provider, apiKey, apiUrl }
+ * 输出：{ models: string[] }
+ */
+fastify.post("/models", async (request, reply) => {
+  try {
+    const { provider = "", apiKey = "", apiUrl = "" } = request.body || {};
+    const p = String(provider || "").toLowerCase();
+    const base = (function pickBaseLocal(pp, given) {
+      const def = "https://api.deepseek.com";
+      if (!given) return def;
+      const lower = String(given).toLowerCase();
+      if (lower.includes("deepseek")) return given;
+      return def;
+    })(p, apiUrl);
+    let endpoint = "";
+    if (p === "deepseek") endpoint = `${base}/v1/models`;
+    let models = [];
+    try {
+      if (endpoint && apiKey) {
+        const res = await fetch(endpoint, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : [];
+          models = arr
+            .map((x) => x?.id || x?.model || x)
+            .filter((id) => typeof id === "string");
+        }
+      }
+    } catch {}
+    if (!Array.isArray(models) || models.length === 0) {
+      const defaults = {
+        deepseek: ["deepseek-chat", "deepseek-reasoner"],
+      };
+      models = defaults[p] || ["deepseek-chat"];
+    }
+    return { models };
+  } catch (e) {
+    reply.code(500);
+    return { error: String(e) };
+  }
+});
+
+fastify.post("/validate", async (request, reply) => {
+  try {
+    const { provider = "", apiKey = "", apiUrl = "", model = "" } = request.body || {};
+    const p = String(provider || "").toLowerCase();
+    const m = String(model || "").trim();
+    const base = (function pickBaseLocal(pp, given) {
+      const def = "https://api.deepseek.com";
+      if (!given) return def;
+      const lower = String(given).toLowerCase();
+      if (lower.includes("deepseek")) return given;
+      return def;
+    })(p, apiUrl);
+    const testMsg = [
+      { role: "system", content: "check" },
+      { role: "user", content: "ping" },
+    ];
+    const tryChat = async () => {
+      const res = await fetch(`${base}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: m || "deepseek-chat", messages: testMsg, temperature: 0 }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return { ok: false, status: res.status, message: text.slice(0, 300) };
+      }
+      return { ok: true };
+    };
+    const result = await tryChat();
+    return result;
+  } catch (e) {
+    reply.code(500);
+    return { ok: false, error: String(e) };
   }
 });
 
@@ -386,16 +592,10 @@ function extractPageMeta(html = "") {
  * 生成分享文案（AI，可选）
  */
 async function generateShareCopyWithAI(meta, opts = {}) {
-  const provider = (opts.provider || process.env.AI_PROVIDER || "").toLowerCase();
-  const apiKey =
-    opts.apiKey || (provider === "deepseek" ? process.env.DEEPSEEK_API_KEY : process.env.OPENAI_API_KEY);
-  const model =
-    opts.model ||
-    (provider === "deepseek" ? process.env.DEEPSEEK_MODEL || "deepseek-chat" : process.env.OPENAI_MODEL || "gpt-4o-mini");
+  const apiKey = opts.apiKey || process.env.DEEPSEEK_API_KEY;
+  const model = opts.model || process.env.DEEPSEEK_MODEL || "deepseek-chat";
   if (!apiKey) return null;
-  const base =
-    opts.apiUrl ||
-    (provider === "deepseek" ? process.env.DEEPSEEK_API_URL || "https://api.deepseek.com" : "https://api.openai.com");
+  const base = opts.apiUrl || process.env.DEEPSEEK_API_URL || "https://api.deepseek.com";
   const lang = String(opts.lang || "zh").toLowerCase() === "en" ? "en" : "zh";
   const info = {
     url: meta.url || "",
@@ -437,28 +637,15 @@ Info:
           { role: "user", content: prompt },
         ];
   try {
-    if (provider === "deepseek") {
-      const res = await fetch(`${base}/v1/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, temperature: 0 }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim() || "";
-      return text.slice(0, 120);
-    } else if (provider === "openai") {
-      const res = await fetch(`https://api.openai.com/v1/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, temperature: 0 }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim() || "";
-      return text.slice(0, 120);
-    }
-    return null;
+    const res = await fetch(`${base}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages, temperature: 0 }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || "";
+    return text.slice(0, 120);
   } catch {
     return null;
   }

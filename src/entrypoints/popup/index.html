@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RainMark</title>
     <style>
-      body { width: 400px; min-height: 500px; margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); }
-      #root { min-height: 500px; }
+      body { width: 400px; min-height: 500px; margin: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--rm-bg); color: var(--rm-text); box-sizing: border-box; }
+      #root { min-height: 500px; margin: 0; box-sizing: border-box; background: transparent; }
       .list { list-style: none; padding: 0; }
       .list li { padding: 8px; border-bottom: 1px solid var(--rm-border); cursor: pointer; will-change: transform, opacity; }
-      .list li:hover { background: var(--rm-pill-bg); }
+      .list li:hover { background: var(--rm-primary); color: #fff; }
+      .list li:hover small { color: #fff; }
       @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
